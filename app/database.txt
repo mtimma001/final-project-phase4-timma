@@ -1,0 +1,51 @@
+Table participants {
+    participant_id INT [primary key, auto increment]
+    first_name VARCHAR(50) [not null]
+    last_name VARCHAR(50) [not null]
+    date_of_birth DATE [not null]
+    gender ENUM('Male', 'Female', 'Other') [not null]
+    contact_info VARCHAR(100)
+}
+
+Table trials {
+    trial_id INT [primary key, auto increment]
+    trial_name VARCHAR(100) [not null]
+    start_date DATE [not null]
+    end_date DATE
+    status ENUM('Ongoing', 'Completed', 'Cancelled') [default: 'Ongoing']
+    participant_id INT [not null]
+
+    Indexes {
+        participant_id [unique]
+    }
+}
+
+Table outcomes {
+    outcome_id INT [primary key, auto increment]
+    participant_id INT
+    trial_id INT
+    outcome_date DATE [not null]
+    outcome_details TEXT
+    result VARCHAR(100)
+
+    Indexes {
+        participant_id
+        trial_id
+    }
+}
+
+Table visualizations_metadata {
+    visualization_id INT [primary key, auto increment]
+    trial_id INT
+    generated_date DATE [not null]
+    description VARCHAR(255)
+
+    Indexes {
+        trial_id
+    }
+}
+
+Ref: trials.participant_id > participants.participant_id [delete: cascade, update: cascade]
+Ref: outcomes.participant_id > participants.participant_id [delete: cascade, update: cascade]
+Ref: outcomes.trial_id > trials.trial_id [delete: cascade, update: cascade]
+Ref: visualizations_metadata.trial_id > trials.trial_id [delete: cascade, update: cascade]
