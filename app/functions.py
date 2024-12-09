@@ -1,6 +1,7 @@
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
+import plotly.graph_objects as go
 from app.db_connect import get_db
 from datetime import datetime
 
@@ -80,25 +81,99 @@ def fetch_and_filter_data(selected_trial, start_date, end_date):
     df = pd.DataFrame(result, columns=['outcome_id', 'outcome_date', 'result', 'trial_name', 'trial_id', 'first_name', 'last_name', 'participant_id'])
     return df
 
-def generate_visualizations(df, selected_trial):
-    if selected_trial:
-        trial_name = df['trial_name'].iloc[0]
+def generate_visualizations(df, single_outcome=False):
+    plots = []
+
+    if single_outcome:
+        # Visualizations for a single outcome
+
+        # Pie Chart for Result Distribution
+        result_counts = df['result'].value_counts()
+        pie_chart = px.pie(
+            names=result_counts.index,
+            values=result_counts,
+            title="Result Distribution",
+            template="simple_white"
+        )
+        plots.append(pie_chart.to_html(full_html=False) + "<br><br>")
+
+        # Line Chart for Outcome Timeline
+        df['numeric_result'] = df['result'].map({'Positive': 1, 'Neutral': 0, 'Negative': -1})
+        timeline_chart = px.line(
+            df.sort_values('outcome_date'),
+            x='outcome_date',
+            y='numeric_result',
+            title="Outcome Timeline",
+            markers=True,
+            labels={'numeric_result': 'Result Value', 'outcome_date': 'Date'},
+            template="simple_white"
+        )
+        plots.append(timeline_chart.to_html(full_html=False) + "<br><br>")
+
+        # Horizontal Bar Chart for Result Frequencies
+        result_counts_df = df['result'].value_counts().reset_index()
+        result_counts_df.columns = ['Result Type', 'Frequency']
+        horizontal_bar_chart = px.bar(
+            result_counts_df,
+            x='Frequency',
+            y='Result Type',
+            orientation='h',
+            title="Frequency of Results",
+            labels={'Frequency': 'Count', 'Result Type': 'Result'},
+            template="simple_white"
+        )
+        plots.append(horizontal_bar_chart.to_html(full_html=False) + "<br><br>")
+
     else:
-        trial_name = "All Trials"
+        # Visualizations for all outcomes
 
-    heading_html = f"<h3 class='text-center'>{trial_name}</h3>"
+        # Result Distribution Across All Trials
+        overall_result_counts = df['result'].value_counts()
+        pie_chart_all = px.pie(
+            names=overall_result_counts.index,
+            values=overall_result_counts,
+            title="Overall Result Distribution",
+            template="simple_white"
+        )
+        plots.append(pie_chart_all.to_html(full_html=False) + "<br><br>")
 
-    visualizations = [plot_outcomes_by_trial(df, selected_trial), plot_outcomes_over_time(df)]
 
-    # Histogram for results
-    fig = px.histogram(df, x='result', title='Distribution of Results',
-                       labels={'result': 'Result'},
-                       color_discrete_sequence=px.colors.qualitative.Plotly)
-    fig.update_layout(margin=dict(l=20, r=20, t=40, b=20),
-                      title={'x': 0.5, 'xanchor': 'center'})
-    visualizations.append(pio.to_html(fig, full_html=False))
+        # Total Outcomes by Trial
+        trial_outcomes = df.groupby('trial_name')['outcome_id'].count().reset_index()
+        bar_chart_all = px.bar(
+            trial_outcomes,
+            x='trial_name',
+            y='outcome_id',
+            title="Total Outcomes by Trial",
+            labels={'trial_name': 'Trial Name', 'outcome_id': 'Total Outcomes'},
+            template="simple_white"
+        )
+        plots.append(bar_chart_all.to_html(full_html=False) + "<br><br>")
 
-    return heading_html + ''.join(visualizations)
+        # Timeline of All Outcomes
+        df['numeric_result'] = df['result'].map({'Positive': 1, 'Neutral': 0, 'Negative': -1})
+        timeline_chart_all = px.line(
+            df.sort_values('outcome_date'),
+            x='outcome_date',
+            y='numeric_result',
+            title="Timeline of All Outcomes",
+            markers=True,
+            labels={'numeric_result': 'Result Value', 'outcome_date': 'Date'},
+            template="simple_white"
+        )
+        plots.append(timeline_chart_all.to_html(full_html=False) + "<br><br>")
+
+        # Histogram of Outcomes by Date
+        histogram = px.histogram(
+            df,
+            x='outcome_date',
+            title="Histogram of Outcomes Over Time",
+            labels={'outcome_date': 'Date'},
+            template="simple_white"
+        )
+        plots.append(histogram.to_html(full_html=False) + "<br><br>")
+
+    return "".join(plots)
 
 
 def prepare_visualization_data(trial_id):
