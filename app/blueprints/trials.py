@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.db_connect import get_db
-import pandas as pd
 
 trials = Blueprint('trials', __name__)
 
@@ -8,21 +7,17 @@ trials = Blueprint('trials', __name__)
 @trials.route('/trials')
 def show_trials():
     connection = get_db()
-    query = """
-        SELECT t.trial_id, t.trial_name, t.start_date, t.end_date, t.status
-        FROM trials t
-    """
+    query = "SELECT trial_id, trial_name, start_date, end_date, status FROM trials"
     with connection.cursor() as cursor:
         cursor.execute(query)
-        result = cursor.fetchall()
+        trials = cursor.fetchall()
 
-    # Convert result to Pandas DataFrame
-    df = pd.DataFrame(result, columns=['trial_id', 'trial_name', 'start_date', 'end_date', 'status'])
+    # Fetch participants for the dropdown
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT participant_id, first_name, last_name FROM participants")
+        participants = cursor.fetchall()
 
-    # Convert the DataFrame to a list of dictionaries for rendering in the template
-    trials = df.to_dict('records')
-
-    return render_template("trials/trials.html", trials=trials)
+    return render_template("trials.html", trials=trials, participants=participants)
 
 # Route to add a trial
 @trials.route('/trials/add', methods=['POST'])
@@ -31,11 +26,12 @@ def add_trial():
     start_date = request.form['start_date']
     end_date = request.form['end_date']
     status = request.form['status']
+    participant_id = request.form['participant_id']
 
     connection = get_db()
-    query = "INSERT INTO trials (trial_name, start_date, end_date, status) VALUES (%s, %s, %s, %s)"
+    query = "INSERT INTO trials (trial_name, start_date, end_date, status, participant_id) VALUES (%s, %s, %s, %s, %s)"
     with connection.cursor() as cursor:
-        cursor.execute(query, (trial_name, start_date, end_date, status))
+        cursor.execute(query, (trial_name, start_date, end_date, status, participant_id))
     connection.commit()
     flash("Trial added successfully!", "success")
     return redirect(url_for('trials.show_trials'))
