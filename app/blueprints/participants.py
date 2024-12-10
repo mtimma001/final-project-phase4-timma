@@ -22,7 +22,7 @@ def show_participants():
     # Convert the DataFrame back to a list of dictionaries for rendering in the template
     all_participants = df.to_dict('records')
 
-    return render_template("participants/participants.html", participants=all_participants)
+    return render_template("participants.html", participants=all_participants)
 
 # Route to add a participant
 @participants.route('/participants/add', methods=['POST'])

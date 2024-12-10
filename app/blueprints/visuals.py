@@ -56,7 +56,7 @@ def show_visuals():
             stats = generate_statistics(df)
             plot_html = generate_visualizations(df, single_outcome=False)
 
-    return render_template('visuals/visuals.html',
+    return render_template('visuals.html',
                            trials=trials, participants=participants,
                            plot_html=plot_html, stats=stats,
                            selected_trial_name=selected_trial_name,

@@ -38,7 +38,7 @@ def show_outcomes():
         cursor.execute("SELECT trial_id, trial_name FROM trials")
         trials = cursor.fetchall()
 
-    return render_template("outcomes/outcomes.html", outcomes=outcomes, participants=participants, trials=trials)
+    return render_template("outcomes.html", outcomes=outcomes, participants=participants, trials=trials)
 
 # Route to add a new outcome
 @outcomes.route('/outcomes/add', methods=['POST'])
