@@ -3,7 +3,7 @@ import plotly.express as px
 import plotly.io as pio
 import plotly.graph_objects as go
 from app.db_connect import get_db
-from datetime import datetime
+from datetime import datetime, date
 
 def generate_statistics(df):
     stats = {
@@ -59,26 +59,35 @@ def custom_visualization(df, x_col, y_col, kind='bar'):
                       title={'x': 0.5, 'xanchor': 'center'})
     return pio.to_html(fig, full_html=False)
 
-def fetch_and_filter_data(selected_trial, start_date, end_date):
+def fetch_and_filter_data(selected_trial, selected_participant, start_date, end_date):
+    """
+    Fetch and filter data based on the selected filters.
+    """
     connection = get_db()
     if not start_date:
-        start_date = '1900-01-01'  # Use a very early date if not provided
+        start_date = '1900-01-01'
     if not end_date:
-        end_date = datetime.today().strftime('%Y-%m-%d')  # Use today's date if not provided
+        end_date = datetime.today().strftime('%Y-%m-%d')
 
     data_query = """
-        SELECT o.outcome_id, o.outcome_date, o.result, t.trial_name, t.trial_id, p.first_name, p.last_name, p.participant_id
+        SELECT o.outcome_id, o.outcome_date, o.result, t.trial_name, t.trial_id,
+               p.first_name, p.last_name, p.participant_id
         FROM outcomes o
         JOIN trials t ON o.trial_id = t.trial_id
         JOIN participants p ON o.participant_id = p.participant_id
         WHERE (%s IS NULL OR %s = '' OR o.trial_id = %s)
-          AND o.outcome_date >= %s
-          AND o.outcome_date <= %s
+          AND (%s IS NULL OR %s = '' OR o.participant_id = %s)
+          AND o.outcome_date BETWEEN %s AND %s
     """
     with connection.cursor() as cursor:
-        cursor.execute(data_query, (selected_trial, selected_trial, selected_trial, start_date, end_date))
+        cursor.execute(data_query, (selected_trial, selected_trial, selected_trial,
+                                    selected_participant, selected_participant, selected_participant,
+                                    start_date, end_date))
         result = cursor.fetchall()
-    df = pd.DataFrame(result, columns=['outcome_id', 'outcome_date', 'result', 'trial_name', 'trial_id', 'first_name', 'last_name', 'participant_id'])
+
+    df = pd.DataFrame(result, columns=['outcome_id', 'outcome_date', 'result', 'trial_name',
+                                       'trial_id', 'first_name', 'last_name', 'participant_id'])
+    df['outcome_date'] = pd.to_datetime(df['outcome_date'])
     return df
 
 def generate_visualizations(df, single_outcome=False):
@@ -190,3 +199,33 @@ def prepare_visualization_data(trial_id):
     with connection.cursor() as cursor:
         cursor.execute(query, (trial_id, generated_date, description))
     connection.commit()
+
+
+def filter_data(connection, selected_trial, selected_participant, start_date, end_date):
+    """
+    Filters the data based on user selections.
+    """
+    # Set default dates if not provided
+    if not start_date:
+        start_date = "1900-01-01"  # Earliest possible date in database
+    if not end_date:
+        end_date = date.today().strftime('%Y-%m-%d')
+
+    query = """
+        SELECT o.outcome_date, o.result, t.trial_name, p.first_name, p.last_name, t.status
+        FROM outcomes o
+        JOIN trials t ON o.trial_id = t.trial_id
+        JOIN participants p ON o.participant_id = p.participant_id
+        WHERE (%s IS NULL OR o.trial_id = %s)
+          AND (%s IS NULL OR o.participant_id = %s)
+          AND o.outcome_date BETWEEN %s AND %s
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(query, (selected_trial, selected_trial, selected_participant, selected_participant, start_date, end_date))
+        result = cursor.fetchall()
+
+    # Convert result to a DataFrame
+    df = pd.DataFrame(result, columns=['outcome_date', 'result', 'trial_name', 'first_name', 'last_name', 'status'])
+    df['outcome_date'] = pd.to_datetime(df['outcome_date'])  # Ensure date format
+    return df
+

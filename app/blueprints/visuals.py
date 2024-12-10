@@ -8,35 +8,60 @@ visuals = Blueprint('visuals', __name__)
 @visuals.route('/visuals', methods=['GET', 'POST'])
 def show_visuals():
     connection = get_db()
-    query = "SELECT trial_id, trial_name FROM trials"
+
+    # Fetch trials and participants for filters
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute("SELECT trial_id, trial_name FROM trials")
         trials = cursor.fetchall()
 
+        cursor.execute("SELECT participant_id, first_name, last_name FROM participants")
+        participants = cursor.fetchall()
+
+    # Initialize variables
     plot_html = None
     stats = None
+    selected_trial_name = "All Trials"
+    selected_participant_name = "All Participants"
     selected_trial = None
+    selected_participant = None
     start_date = None
     end_date = None
 
     if request.method == 'POST':
+        # Capture filters
         selected_trial = request.form.get('trial_id')
+        selected_participant = request.form.get('participant_id')
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
 
-        df = fetch_and_filter_data(selected_trial, start_date, end_date)
+        # Get display names for selected filters
+        if selected_trial:
+            selected_trial_name = next((trial['trial_name'] for trial in trials
+                                        if str(trial['trial_id']) == selected_trial), "All Trials")
+        if selected_participant:
+            selected_participant_name = next((f"{participant['first_name']} {participant['last_name']}"
+                                              for participant in participants
+                                              if str(participant['participant_id']) == selected_participant),
+                                             "All Participants")
 
+        # Fetch filtered data
+        df = fetch_and_filter_data(selected_trial, selected_participant, start_date, end_date)
         if not df.empty:
             stats = generate_statistics(df)
             plot_html = generate_visualizations(df, single_outcome=False)
     else:
-        df = fetch_and_filter_data(None, None, None)
+        # Default data display
+        df = fetch_and_filter_data(None, None, None, None)
         if not df.empty:
             stats = generate_statistics(df)
             plot_html = generate_visualizations(df, single_outcome=False)
 
-    return render_template('visuals/visuals.html', trials=trials, plot_html=plot_html, stats=stats, selected_trial=selected_trial, start_date=start_date, end_date=end_date)
-
+    return render_template('visuals/visuals.html',
+                           trials=trials, participants=participants,
+                           plot_html=plot_html, stats=stats,
+                           selected_trial_name=selected_trial_name,
+                           selected_participant_name=selected_participant_name,
+                           start_date=start_date, end_date=end_date)
 
 @visuals.route('/visuals/<int:outcome_id>', methods=['GET'])
 def show_single_outcome_visuals(outcome_id):

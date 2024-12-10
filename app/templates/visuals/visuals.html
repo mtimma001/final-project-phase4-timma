@@ -3,41 +3,51 @@
 {% block title %}Visualizations{% endblock %}
 
 {% block content %}
-<h2 class="text-primary text-center">Visualizations</h2>
+<h2 class="text-primary">Dynamic Visualizations and Statistics</h2>
 
 <!-- Filter Form -->
 <form method="post" class="mb-4">
-    <div class="row">
+    <div class="row text-center">
         <div class="col-md-4">
             <label for="trial_id" class="form-label">Select Trial</label>
-            <select id="trial_id" name="trial_id" class="form-select">
-                <option value="" {% if not selected_trial %}selected{% endif %}>
-                    All Trials
-                </option>
+            <select class="form-select" id="trial_id" name="trial_id">
+                <option value="">All Trials</option>
                 {% for trial in trials %}
-                    <option value="{{ trial.trial_id }}" {% if selected_trial and trial.trial_id == selected_trial %}selected{% endif %}>{{ trial.trial_name }}</option>
+                <option value="{{ trial.trial_id }}" {% if selected_trial_name == trial.trial_name %}selected{% endif %}>
+                    {{ trial.trial_name }}
+                </option>
                 {% endfor %}
             </select>
         </div>
         <div class="col-md-4">
-            <label for="start_date" class="form-label">Start Date</label>
-            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
+            <label for="participant_id" class="form-label">Select Participant</label>
+            <select class="form-select" id="participant_id" name="participant_id">
+                <option value="">All Participants</option>
+                {% for participant in participants %}
+                <option value="{{ participant.participant_id }}"
+                        {% if selected_participant_name == participant.first_name + ' ' + participant.last_name %}selected{% endif %}>
+                    {{ participant.first_name }} {{ participant.last_name }}
+                </option>
+                {% endfor %}
+            </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
+            <label for="start_date" class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+        </div>
+        <div class="col-md-2">
             <label for="end_date" class="form-label">End Date</label>
-            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
+            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+        </div>
+        <div class="col-md-12 d-flex justify-content-center mt-3">
+            <button type="submit" class="btn btn-outline-primary w-50">Generate Visualization</button>
         </div>
     </div>
-    <button type="submit" class="btn btn-primary mt-3">Filter</button>
 </form>
-
-<!-- Display Message -->
-{% if message %}
-<div class="alert alert-info">{{ message }}</div>
-{% endif %}
 
 <!-- Display Statistics -->
 {% if stats %}
+<h3 class="text-secondary mt-5 text-center">Statistics</h3>
 <div class="row">
     <div class="col-md-4">
         <div class="card text-white bg-primary mb-3">
@@ -66,13 +76,16 @@
 </div>
 {% endif %}
 
-<!-- Display Visualizations -->
+<!-- Visualizations Section -->
 {% if plot_html %}
-<div>
-    <h3 class="text-center">Visualizations</h3>
-    <div style="margin-bottom: 30px;">
-        {{ plot_html|safe }}
+<div class="mt-5">
+    <h3 class="text-secondary text-center">Visualizations</h3>
+
+    <!-- Selected Filters -->
+    <div class="alert alert-info mt-4 text-center">
+        <strong>Currently Displaying:</strong> {{ selected_trial_name }} | {{ selected_participant_name }}
     </div>
+    {{ plot_html|safe }}
 </div>
 {% endif %}
 {% endblock %}
